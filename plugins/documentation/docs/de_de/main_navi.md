@@ -10,6 +10,7 @@
 - Plugins
 	- [Statistik](plugin-stats.md)
 	- [Plaintext](plugin-plaintext.md)
+	- [Autocomplete](plugin-autocomplete.md)
 - Beispiele
 	- [Such-Eingabe](module-form.md)
 	- [Einfache Suche](module-simple.md)
@@ -25,6 +26,7 @@
 	- [Highlighting](howto-highlighting.md)
 	- [Auf Kategorien beschränken](howto-categories.md)
 	- [Paginierung](howto-pagination.md) (in Arbeit)
+	- [Multidomain mit YRewrite](howto-multidomainyrewrite.md)
 
 ---
 

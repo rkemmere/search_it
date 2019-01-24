@@ -191,10 +191,9 @@ class search_it
         $keywords = array();
         foreach ($langs as $lang) {
             $langID = $lang->getId();
-            $v = $lang->getName();
-            $v = $langID;
+
             if (in_array($_id, $this->excludeIDs)) {
-                $return[$v] = SEARCH_IT_ART_EXCLUDED;
+                $return[$langID] = SEARCH_IT_ART_EXCLUDED;
                 continue;
             }
 
@@ -221,6 +220,10 @@ class search_it
 
             // index article
             $article = rex_article::get(intval($_id), $langID);
+            if ( is_null($article)) {
+                $return[$langID] = SEARCH_IT_ART_IDNOTFOUND;
+                continue;
+            }
 
             if (is_object($article) AND ($article->isOnline() OR rex_addon::get('search_it')->getConfig('indexoffline')) AND $_id != 0
                 AND ($_id != rex_article::getNotfoundArticleId() OR $_id == rex_article::getSiteStartArticleId())  ) {
@@ -263,18 +266,23 @@ class search_it
                             $articleText = $response->getBody();
                         } else {
                             $articleText = '';
-                            if ( $response->getStatusCode() != '404' ) {
-                                rex_logger::factory()->info('Fehler bei der Indexierung per HTTP-GET von ' . $scanurl . '<br>' . $response->getStatusCode() . ' - ' . $response->getStatusMessage());
-                                $return[$v] = SEARCH_IT_ART_NOTOK;
+                            !is_null($response) ? $response_text = $response->getStatusCode() . ' - ' . $response->getStatusMessage() : $response_text = '';
+                            if ( $response->isRedirection() ) {
+                                $return[$langID] = SEARCH_IT_ART_REDIRECT;
+                            } else if ( $response->getStatusCode() == '404' ) {
+                                $return[$langID] = SEARCH_IT_ART_404;
+                                rex_logger::factory()->info('Fehler bei der Indexierung per HTTP-GET von ' . $scanurl . '<br>' . $response_text );
                             } else {
-                                $return[$v] = SEARCH_IT_ART_REDIRECT;
+                                rex_logger::factory()->info('Fehler bei der Indexierung per HTTP-GET von ' . $scanurl . '<br>' . $response_text );
+                                $return[$langID] = SEARCH_IT_ART_NOTOK;
                             }
                             continue;
                         }
+
                  } catch (rex_socket_exception $e) {
                     $articleText = '';
-                    rex_logger::factory()->info('Socket-Fehler bei der Indexierung per HTTP-GET von '.$scanurl. '<br>' .$response->getStatusCode().' - '.$response->getStatusMessage());
-                    $return[$v] = SEARCH_IT_ART_ERROR;
+                    rex_logger::factory()->info('Socket-Fehler bei der Indexierung per HTTP-GET von '.$scanurl. '<br>' .$e->getMessage() );
+                    $return[$langID] = SEARCH_IT_ART_ERROR;
                     continue;
 
                  }
@@ -285,7 +293,8 @@ class search_it
                 $articleText = '';
                 foreach ($matches as $match) {
                     if ( $match[1] == $_id || $match[1] == '' ) {
-                        $articleText .= ' ' . $match[2];
+                        // eventuell in diesem enthaltene weitere tags entfernen
+                        $articleText .= ' ' . preg_replace('/<!--\s\/?search_it\s[^(-->)]*\s?-->/s','', $match[2]);
                     }
                 }
 
@@ -615,7 +624,7 @@ class search_it
                     $tempFile = tempnam(rex_path::cache() . 'addons/mediapool/', 'search_it');
                     $encoding = 'UTF-8';
                     //echo 'pdftotext ' . escapeshellarg(rex_path::base($_filename)) . ' ' . escapeshellarg($tempFile) . ' -enc ' . $encoding;
-                    exec('pdftotext ' . escapeshellarg(rex_path::base($_filename)) . ' ' . escapeshellarg($tempFile) . ' -enc ' . $encoding, $dummy, $return);
+                    exec('pdftotext  -enc ' . $encoding.' '. escapeshellarg(rex_path::base($_filename)) . ' ' . escapeshellarg($tempFile) , $dummy, $return);
 
                     if ($return > 0) {
                         if ($return == 1) {
